@@ -3,12 +3,21 @@
 ##############################################
 
 param(
-    [string]$path,
+    [System.IO.FileInfo]$path,
     [switch]$setdebug
 
 )
-$path = Read-Host -Prompt "Please enter the root path the script will run from"
+
+If (!($path)) {
+    do {
+        $path = Read-Host -Prompt "Please enter the path containing the .mkv files you want to add a stereo track to..."
+    } until (Test-Path $path -PathType Container)
+}
+
+$Global:core_Debug = $true
 $rootdirectory = $path
+$rootdirectoryletter = (Get-Item $path ).psdrive.name
+$filteredmovielist = @()
 
 Function Write-Exists{
     Write-Host "[EXISTS]" -BackgroundColor Yellow -ForegroundColor Black
@@ -66,7 +75,7 @@ Function Write-Clean {
     param (
         [Parameter (Position = 0, Mandatory = $true)]$myString
     )
-    $numadjust = 90
+    $numadjust = 120
     $count = $myString.length
 
     # Write-Host $count
@@ -80,28 +89,61 @@ Function Write-Clean {
 
 
 
-if(Get-ChildItem -name "ffmpegOut\")
+if(Get-ChildItem $rootdirectory -Directory -name "ffmpegOut")
     {
     Write-Clean "Checking if output folder exists in $rootdirectory."
     Write-HostPassed
     }
 Else{
     Write-Clean "Output folder does not exist. Creating...." 
-    New-Item -Name "ffmpegOut" -ItemType "directory" 
+    New-Item $rootdirectory -Name "ffmpegOut" -ItemType "directory" | Out-Null
     Write-HostPassed
     }
 
 
-$parentfolderlist = Get-Childitem $rootdirectory -Directory | Select-Object -ExpandProperty FullName
-$filteredmovielist = @()
-
-ForEach($parentfolder in $parentfolderlist) {
-        $filteredmovielist += Get-ChildItem $parentfolder -Filter "*.mkv" | Where-Object { $_ -notmatch "sample" }
+If($rootdirectory) {
+    Write-Clean "Grabbing list of parent folders in specified directory"
+    try {
+        $parentfolderlist = Get-Childitem $rootdirectory -Directory | Select-Object -ExpandProperty FullName -ErrorAction Stop
+        Write-HostPassed
+    }
+    catch {
+        Write-HostFailed
+        Write-Clean "Error creating list of parent folders in specified path. Please check the specified root directory for running processes and files in use."
+        Write-HostFailed
+    }
     
+}
+    
+Write-Clean "Loading parent folder list"
+If($parentfolderlist) {
+    Write-HostPassed
+    Try{
+        Write-Clean "Filtering to only .mkv files and excluding sample files.........."
+        ForEach($parentfolder in $parentfolderlist) {
+            $filteredmovielist += Get-ChildItem $parentfolder -Filter "*.mkv" | Where-Object { $_ -notmatch "sample" } -ErrorAction Stop
+        }
+        Write-HostPassed        
+    }
+    Catch {
+        Write-HostFailed
+    }
+}
+Else{
+    Write-HostFailed
+    Write-Host "There was a problem generating the list of parent folders in the specified root directory. Please try again and ensure there are no running processes using $rootdirectory" -BackgroundColor DarkRed -ForegroundColor Black
+}
+
+Write-Clean "Generating text file with list of movies to generate an audio track for"
+If(Test-Path "$rootdirectory\ffmpegOut\file_list.txt"){
+    #Run a diff against existing file and append difference into text file
+}
+Else{
+    $filteredmovielist.FullName | Out-File -FilePath "$rootdirectory\ffmpegOut\file_list.txt" 
 }
 
 
-$filteredmovielist.FullName | Out-File -FilePath "$rootdirectory\ffmpegOut\file_list.txt" 
+Write-HostPassed
 
 #foreach($movieEncode in $filteredmovielist.FullName) {
     #ffmpeg -y -i "$movieEncode" -map 0:v -c:v copy -map 0:a:0? -c:a:0 copy -map 0:a:0? -c:a:1 ac3 -b:a:1 384k -ac 2 -metadata:s:a:1 title="2.0 Stereo" -metadata:s:a:1 language=eng -map 0:a:1? -c:a:2 copy -map 0:a:2? -c:a:3 copy -map 0:a:3? -c:a:4 copy -map 0:a:4? -c:a:5 copy -map 0:a:5? -c:a:6 copy -map 0:a:6? -c:a:7 copy -map 0:s? -c:s copy "ffmpegOut/%%~nA.mkv"
