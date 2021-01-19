@@ -16,8 +16,7 @@ If (!($path)) {
 
 $Global:core_Debug = $true
 $rootdirectory = $path
-$rootdirectoryletter = (Get-Item $path ).psdrive.name
-$filteredmovielist = @()
+$FilteredMovieList = @()
 
 Function Write-Exists{
     Write-Host "[EXISTS]" -BackgroundColor Yellow -ForegroundColor Black
@@ -66,7 +65,7 @@ Function Write-Info {
     )
     if ($Global:core_Debug -eq $true) {
         Write-Host "[INFO]" -NoNewline -BackgroundColor Cyan -ForegroundColor Black
-        Write-Host $message1 -BackgroundColor Black -ForegroundColor Cyan -NoNewline
+        Write-Host $message1 -NoNewline -BackgroundColor Black -ForegroundColor Cyan
         Write-Host $message2 -BackgroundColor Black -ForegroundColor Cyan 
     }
 }
@@ -121,7 +120,7 @@ If($parentfolderlist) {
     Try{
         Write-Clean "Filtering to only .mkv files and excluding sample files.........."
         ForEach($parentfolder in $parentfolderlist) {
-            $filteredmovielist += Get-ChildItem $parentfolder -Filter "*.mkv" | Where-Object { $_ -notmatch "sample" } -ErrorAction Stop
+            $FilteredMovieList += Get-ChildItem $parentfolder -Filter "*.mkv" | Where-Object { $_ -notmatch "sample" } -ErrorAction Stop
         }
         Write-HostPassed        
     }
@@ -134,21 +133,50 @@ Else{
     Write-Host "There was a problem generating the list of parent folders in the specified root directory. Please try again and ensure there are no running processes using $rootdirectory" -BackgroundColor DarkRed -ForegroundColor Black
 }
 
-Write-Clean "Generating text file with list of movies to generate an audio track for"
+Write-Clean "Generating text file with a list of movies located within $($rootdirectory)"
 If(Test-Path "$rootdirectory\ffmpegOut\file_list.txt"){
     #Run a diff against existing file and append difference into text file
 }
 Else{
-    $filteredmovielist.FullName | Out-File -FilePath "$rootdirectory\ffmpegOut\file_list.txt" 
+    $FilteredMovieList.FullName | Out-File -FilePath "$rootdirectory\ffmpegOut\file_list.txt" 
+}
+Write-HostPassed
+
+# Detect all audio streams on the .mkv file, and parse them out by order
+# Downmix from the highest audio channel (IE. a:0) which is typically 7 channel atmos or 5.1 DTS, into 2.0 stereo
+# Slot 2.0 stereo at the bottom of the audio list we parsed out earlier
+
+foreach($MovieMetadata in $FilteredMovieList) {
+    Try{
+        Write-Clean "Grabbing metadata from $($MovieMetadata.Name) "        
+        # WIP ffprobe logic to grab only audio streams with title, codec, and index in parseable json formatting
+        $metadata = ffprobe -v error -select_streams a -show_entries stream=index,codec_name,codec_type,channels:stream_tags -print_format json $MovieMetadata | ConvertFrom-Json -ErrorAction Stop
+        $indexcount = ($metadata.streams.index | Measure-Object).Count
+        Write-HostPassed
+        
+            foreach($audiostream in $metadata.streams){
+
+
+            }
+        
+    }
+    Catch{
+        Write-HostFailed
+        Write-Clean "Unable to grab $($MovieMetadata.Name) metadata. ¯\_(O_O)_/¯" 
+        Write-HostFailed
+        
+
+    }
+
+    # If($metadata.{
+
+    # }
+
+
 }
 
 
-Write-HostPassed
-
-#foreach($movieEncode in $filteredmovielist.FullName) {
-    #ffmpeg -y -i "$movieEncode" -map 0:v -c:v copy -map 0:a:0? -c:a:0 copy -map 0:a:0? -c:a:1 ac3 -b:a:1 384k -ac 2 -metadata:s:a:1 title="2.0 Stereo" -metadata:s:a:1 language=eng -map 0:a:1? -c:a:2 copy -map 0:a:2? -c:a:3 copy -map 0:a:3? -c:a:4 copy -map 0:a:4? -c:a:5 copy -map 0:a:5? -c:a:6 copy -map 0:a:6? -c:a:7 copy -map 0:s? -c:s copy "ffmpegOut/%%~nA.mkv"
-
-#}
+#ffmpeg -y -i "$movieEncode" -map 0:v -c:v copy -map 0:a:0? -c:a:0 copy -map 0:a:0? -c:a:1 ac3 -b:a:1 384k -ac 2 -metadata:s:a:1 title="2.0 Stereo" -metadata:s:a:1 language=eng -map 0:a:1? -c:a:2 copy -map 0:a:2? -c:a:3 copy -map 0:a:3? -c:a:4 copy -map 0:a:4? -c:a:5 copy -map 0:a:5? -c:a:6 copy -map 0:a:6? -c:a:7 copy -map 0:s? -c:s copy "ffmpegOut/%%~nA.mkv"
 #if not exist "ffmpegOut\" MD "ffmpegOut"
 #for /r %%A IN ("*.mkv") Do ffmpeg -y -i "%%A" -map 0:v -c:v copy -map 0:a:0? -c:a:0 copy -map 0:a:0? -c:a:1 ac3 -b:a:1 384k -ac 2 -metadata:s:a:1 title="2.0 Stereo" -metadata:s:a:1 language=eng -map 0:a:1? -c:a:2 copy -map 0:a:2? -c:a:3 copy -map 0:a:3? -c:a:4 copy -map 0:a:4? -c:a:5 copy -map 0:a:5? -c:a:6 copy -map 0:a:6? -c:a:7 copy -map 0:s? -c:s copy "ffmpegOut/%%~nA.mkv"
 #pause
