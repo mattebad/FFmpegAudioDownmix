@@ -148,16 +148,48 @@ Write-HostPassed
 
 foreach($MovieMetadata in $FilteredMovieList) {
     Try{
+        $indexarray = @()
         Write-Clean "Grabbing metadata from $($MovieMetadata.Name) "        
         # WIP ffprobe logic to grab only audio streams with title, codec, and index in parseable json formatting
         $metadata = ffprobe -v error -select_streams a -show_entries stream=index,codec_name,codec_type,channels:stream_tags -print_format json $MovieMetadata | ConvertFrom-Json -ErrorAction Stop
-        $indexcount = ($metadata.streams.index | Measure-Object).Count
         Write-HostPassed
-        
-            foreach($audiostream in $metadata.streams){
-
-
+        # Build array of audio indexes
+        foreach($index in $metadata.streams){
+            If($index.tags | Where-Object {$_.title -notmatch "commentary"}){
+                $indexarray += $index
+                Write-Host "$indexarray"
             }
+            Else{
+                Write-Clean "Excluding Commentary Track from $Moviemetadata.name"
+                # Strip out track based on commentary title in tag metadata
+            }
+        }
+            Foreach($audiostream in $indexarray){
+                $audiotrack = ($metadata.streams | Where-Object {$_.index -eq "$audiostream"})
+                Write-Host "$audiotrack"
+                If($audiotrack.tags.language){
+                    If($audiotrack.tags.language -match "eng"){
+                        Write-Info "Found English audio track"
+                    }
+                        # Pick the highest possible channel width to downmix from. 
+                        # Typically the highest index will contain the highest quality audio file.
+                        # IE.(Index #1= Atmos/7.1, Index #2 = 5.1, Index #3 = etc.)
+                        # This is not totally perfect, but accurate enough based on the scene releases and blu-ray formatting.
+                        If($audiotrack.channels -eq "8"){
+                            # Grab indexarray for our total index
+                        }
+                        Elseif($audiotrack.channels -eq "6"){
+
+                        }
+                    Elseif($audiotrack.tags.language -match "jpn"){
+                        Write-Info "Found Japanese audio track. Sugoi."
+                    }
+                }
+                else{
+                    Write-Info "Audio track: $audiotrack.index does not have a tagged language"
+                }
+            }
+
         
     }
     Catch{
@@ -176,7 +208,7 @@ foreach($MovieMetadata in $FilteredMovieList) {
 }
 
 
-#ffmpeg -y -i "$movieEncode" -map 0:v -c:v copy -map 0:a:0? -c:a:0 copy -map 0:a:0? -c:a:1 ac3 -b:a:1 384k -ac 2 -metadata:s:a:1 title="2.0 Stereo" -metadata:s:a:1 language=eng -map 0:a:1? -c:a:2 copy -map 0:a:2? -c:a:3 copy -map 0:a:3? -c:a:4 copy -map 0:a:4? -c:a:5 copy -map 0:a:5? -c:a:6 copy -map 0:a:6? -c:a:7 copy -map 0:s? -c:s copy "ffmpegOut/%%~nA.mkv"
+#ffmpeg -y -i "$movieEncode" -map 0:v -c:v copy -map 0:a:0? -c:a:0 copy -map 0:a:0? -c:a:1 ac3 -b:a:1 256k -ac 2 -metadata:s:a:1 title="2.0 Stereo" -metadata:s:a:1 language=eng -map 0:a:1? -c:a:2 copy -map 0:a:2? -c:a:3 copy -map 0:a:3? -c:a:4 copy -map 0:a:4? -c:a:5 copy -map 0:a:5? -c:a:6 copy -map 0:a:6? -c:a:7 copy -map 0:s? -c:s copy "ffmpegOut/%%~nA.mkv"
 #if not exist "ffmpegOut\" MD "ffmpegOut"
 #for /r %%A IN ("*.mkv") Do ffmpeg -y -i "%%A" -map 0:v -c:v copy -map 0:a:0? -c:a:0 copy -map 0:a:0? -c:a:1 ac3 -b:a:1 384k -ac 2 -metadata:s:a:1 title="2.0 Stereo" -metadata:s:a:1 language=eng -map 0:a:1? -c:a:2 copy -map 0:a:2? -c:a:3 copy -map 0:a:3? -c:a:4 copy -map 0:a:4? -c:a:5 copy -map 0:a:5? -c:a:6 copy -map 0:a:6? -c:a:7 copy -map 0:s? -c:s copy "ffmpegOut/%%~nA.mkv"
 #pause
