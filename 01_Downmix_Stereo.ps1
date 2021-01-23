@@ -18,6 +18,7 @@ $Global:core_Debug = $true
 $rootdirectory = $path
 $FilteredMovieList = @()
 
+
 Function Write-Exists{
     Write-Host "[EXISTS]" -BackgroundColor Yellow -ForegroundColor Black
 }
@@ -74,7 +75,7 @@ Function Write-Clean {
     param (
         [Parameter (Position = 0, Mandatory = $true)]$myString
     )
-    $numadjust = 120
+    $numadjust = 200
     $count = $myString.length
 
     # Write-Host $count
@@ -87,7 +88,7 @@ Function Write-Clean {
 }
 
 
-
+# Add option to name folder as a parameter/prompt
 if(Get-ChildItem $rootdirectory -Directory -name "ffmpegOut")
     {
     Write-Clean "Checking if output folder exists in $rootdirectory."
@@ -149,46 +150,74 @@ Write-HostPassed
 foreach($MovieMetadata in $FilteredMovieList) {
     Try{
         $indexarray = @()
+        $engAudiolist = @()
         Write-Clean "Grabbing metadata from $($MovieMetadata.Name) "        
         # WIP ffprobe logic to grab only audio streams with title, codec, and index in parseable json formatting
         $metadata = ffprobe -v error -select_streams a -show_entries stream=index,codec_name,codec_type,channels:stream_tags -print_format json $MovieMetadata | ConvertFrom-Json -ErrorAction Stop
         Write-HostPassed
         # Build array of audio indexes
-        foreach($index in $metadata.streams){
-            If($index.tags | Where-Object {$_.title -notmatch "commentary"}){
-                $indexarray += $index
-                Write-Host "$indexarray"
+        foreach($track in $metadata.streams){
+            # Strip out track based on commentary title in tag metadata
+            If($track.tags | Where-Object {$_.title -notmatch "commentary"}){
+                Write-Clean "Grabbing audio track from $($Moviemetadata.name)"
+                $indexarray += $track.index 
+                Write-HostPassed
             }
             Else{
-                Write-Clean "Excluding Commentary Track from $Moviemetadata.name"
-                # Strip out track based on commentary title in tag metadata
+                
+                
             }
         }
+            # Iterate through audio streams and match to indexarray we built earlier for tracks to include in new .mkv
             Foreach($audiostream in $indexarray){
-                $audiotrack = ($metadata.streams | Where-Object {$_.index -eq "$audiostream"})
-                Write-Host "$audiotrack"
+                $audiotrack = ($metadata.streams | Where-Object {$_.index -eq $audiostream})
                 If($audiotrack.tags.language){
                     If($audiotrack.tags.language -match "eng"){
                         Write-Info "Found English audio track"
+                        $engAudiolist += $audiotrack
                     }
-                        # Pick the highest possible channel width to downmix from. 
-                        # Typically the highest index will contain the highest quality audio file.
-                        # IE.(Index #1= Atmos/7.1, Index #2 = 5.1, Index #3 = etc.)
-                        # This is not totally perfect, but accurate enough based on the scene releases and blu-ray formatting.
-                        If($audiotrack.channels -eq "8"){
-                            # Grab indexarray for our total index
-                        }
-                        Elseif($audiotrack.channels -eq "6"){
-
-                        }
                     Elseif($audiotrack.tags.language -match "jpn"){
                         Write-Info "Found Japanese audio track. Sugoi."
                     }
                 }
                 else{
-                    Write-Info "Audio track: $audiotrack.index does not have a tagged language"
+                    Write-Info "Audio track: $($audiotrack.index) does not have a tagged language"
                 }
             }
+            # This does not account for multi-language releases with both English and Japanese audio
+            # Should probably add logic to include both audio lists in the check
+            If($engAudiolist) {
+                $trackindex = ($engAudiolist | Measure-Object).Count
+                # Can we figure out a better way to dynamically run ffmpeg commands
+                # This is absolutely not an ideal way of doing this as we'd be hardcoding the command
+                # Based on the amount of tracks we grabbed earlier
+                # Ideally I'd find some way to dynamically build the ffmpeg command based on the tracks we grabbed earlier
+                If($trackindex -eq "1") {
+                    Write-Host "1 Audio tracks being kept"
+                    #ffmpeg command here?
+                }
+                elseif ($trackindex -eq "2") {
+                    Write-Host "2 Audio tracks being kept"
+                    #ffmpeg command here?
+                }
+                elseif ($trackindex -eq "3") {
+                    Write-Host "3 Audio tracks being kept"
+                    #ffmpeg command here?
+                }
+                elseif ($trackindex -eq "4") {
+                    Write-Host "4 Audio tracks being kept"
+                    #ffmpeg command here?
+                }
+                elseif ($trackindex -eq "5") {
+                    Write-Host "5 Audio tracks being kept"
+                    #ffmpeg command here?
+                }
+                elseif ($trackindex -eq "6") {
+                    Write-Host "6 Audio tracks being kept"
+                    #ffmpeg command here?
+                }
+            }
+
 
         
     }
@@ -205,7 +234,22 @@ foreach($MovieMetadata in $FilteredMovieList) {
     # }
 
 
+}    
+
+# Possibly no longer needed because of how the tracks are sorted from highest quality to lowest anyway.
+# May need to revisit
+
+# Pick the highest possible channel width to downmix from. 
+# Typically the highest index will contain the highest quality audio file.
+# IE.(Index #1= Atmos/7.1, Index #2 = 5.1, Index #3 = etc.)
+# This is not totally perfect, but accurate enough based on the scene releases and blu-ray formatting.
+If($audiotrack.channels -eq "8"){
+    
 }
+Elseif($audiotrack.channels -eq "6"){
+
+}
+
 
 
 #ffmpeg -y -i "$movieEncode" -map 0:v -c:v copy -map 0:a:0? -c:a:0 copy -map 0:a:0? -c:a:1 ac3 -b:a:1 256k -ac 2 -metadata:s:a:1 title="2.0 Stereo" -metadata:s:a:1 language=eng -map 0:a:1? -c:a:2 copy -map 0:a:2? -c:a:3 copy -map 0:a:3? -c:a:4 copy -map 0:a:4? -c:a:5 copy -map 0:a:5? -c:a:6 copy -map 0:a:6? -c:a:7 copy -map 0:s? -c:s copy "ffmpegOut/%%~nA.mkv"
