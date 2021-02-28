@@ -1,6 +1,6 @@
 # FFmpegAudioDownmix
 # The intention of this project is to begin to automate the intake of my media completely from beginning to end.
-# This is the first stage of that, by automating the management and creation of selected audio tracks, I'm able to consolidate
+# This is the first stage of that, by automating the management and creation of selected media files, I'm able to consolidate
 # my entire media library without having to do any work other than adding it into Sonarr or Radarr
 
 This script specifically is being built to do the following functions:
