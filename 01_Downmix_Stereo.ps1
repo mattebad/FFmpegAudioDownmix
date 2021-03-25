@@ -268,7 +268,8 @@ foreach($MovieMetadata in $FilteredMovieList) {
             $CompletedMovieList.FullName | Out-File -FilePath "$rootdirectory\ffmpegOut\completed_file_list.txt" 
         
             # Empty List Variables
-            $CompletedMovieList = 
+            $CompletedMovieList = {}
+            
     }
     Catch{
         Write-HostFailed
