@@ -17,6 +17,7 @@ If (!($path)) {
 $Global:core_Debug = $true
 $rootdirectory = $path
 $FilteredMovieList = @()
+$CompletedMovieList = @()
 
 
 Function Write-Exists{
@@ -123,7 +124,7 @@ If($parentfolderlist) {
         ForEach($parentfolder in $parentfolderlist) {
             $FilteredMovieList += Get-ChildItem $parentfolder -Filter "*.mkv" | Where-Object { $_ -notmatch "sample" } -ErrorAction Stop
         }
-        Write-HostPassed        
+        Write-HostPassed
     }
     Catch {
         Write-HostFailed
@@ -164,7 +165,7 @@ foreach($MovieMetadata in $FilteredMovieList) {
                 Write-HostPassed
             }
             Else{
-                
+                Write-Info "Disposing of commentary audio track."
                 
             }
         }
@@ -182,44 +183,92 @@ foreach($MovieMetadata in $FilteredMovieList) {
                 }
                 else{
                     Write-Info "Audio track: $($audiotrack.index) does not have a tagged language"
+                    Write-Info "Manually set audio metadata on $MovieMetadata"
                 }
             }
+
+            # Used to track list of movies completed after the first run
+            If($CompletedMovieList) {
             # This does not account for multi-language releases with both English and Japanese audio
             # Should probably add logic to include both audio lists in the check
-            If($engAudiolist) {
-                $trackindex = ($engAudiolist | Measure-Object).Count
-                # Can we figure out a better way to dynamically run ffmpeg commands
-                # This is absolutely not an ideal way of doing this as we'd be hardcoding the command
-                # Based on the amount of tracks we grabbed earlier
-                # Ideally I'd find some way to dynamically build the ffmpeg command based on the tracks we grabbed earlier
-                If($trackindex -eq "1") {
-                    Write-Host "1 Audio tracks being kept"
-                    #ffmpeg command here?
+                If($engAudiolist) {
+                    $trackindex = ($engAudiolist | Measure-Object).Count
+                    # Can we figure out a better way to dynamically run ffmpeg commands?
+                    # This is absolutely not an ideal way of doing this as we'd be hardcoding the command
+                    # Based on the amount of tracks we grabbed earlier
+                    # Ideally I'd find some way to dynamically build the ffmpeg command based on the tracks we grabbed earlier
+                    If($trackindex -eq "1") {
+                        Write-Host "1 Audio tracks being kept"
+                        #ffmpeg command here?
+                    }
+                    elseif ($trackindex -eq "2") {
+                        Write-Host "2 Audio tracks being kept"
+                        #ffmpeg command here?
+                    }
+                    elseif ($trackindex -eq "3") {
+                        Write-Host "3 Audio tracks being kept"
+                        #ffmpeg command here?
+                    }
+                    elseif ($trackindex -eq "4") {
+                        Write-Host "4 Audio tracks being kept"
+                        #ffmpeg command here?
+                    }
+                    elseif ($trackindex -eq "5") {
+                        Write-Host "5 Audio tracks being kept"
+                        #ffmpeg command here?
+                    }
+                    elseif ($trackindex -eq "6") {
+                        Write-Host "6 Audio tracks being kept"
+                        #ffmpeg command here?
+                    }
+                    # After FFMpeg completes, add movie path into completed list
+                    $CompletedMovieList += $MovieMetadata
                 }
-                elseif ($trackindex -eq "2") {
-                    Write-Host "2 Audio tracks being kept"
-                    #ffmpeg command here?
-                }
-                elseif ($trackindex -eq "3") {
-                    Write-Host "3 Audio tracks being kept"
-                    #ffmpeg command here?
-                }
-                elseif ($trackindex -eq "4") {
-                    Write-Host "4 Audio tracks being kept"
-                    #ffmpeg command here?
-                }
-                elseif ($trackindex -eq "5") {
-                    Write-Host "5 Audio tracks being kept"
-                    #ffmpeg command here?
-                }
-                elseif ($trackindex -eq "6") {
-                    Write-Host "6 Audio tracks being kept"
-                    #ffmpeg command here?
+            }
+            # So this is absolutely not ideal code, but I can't think of a better way to do this for right now.
+            # I have to track the movies that are completed, but in doing so, the logic to add the movie to the completed list
+            # has to be at the end of the ffmpeg command otherwise it doesn't make sense.
+            # But this means that the completedmovielist doesn't exist on the first run, since nothing exists for it until we have
+            # at least one completion.
+            else {
+                If($engAudiolist) {
+                    $trackindex = ($engAudiolist | Measure-Object).Count
+                    If($trackindex -eq "1") {
+                        Write-Host "1 Audio tracks being kept"
+                        #ffmpeg command here?
+                    }
+                    elseif ($trackindex -eq "2") {
+                        Write-Host "2 Audio tracks being kept"
+                        #ffmpeg command here?
+                    }
+                    elseif ($trackindex -eq "3") {
+                        Write-Host "3 Audio tracks being kept"
+                        #ffmpeg command here?
+                    }
+                    elseif ($trackindex -eq "4") {
+                        Write-Host "4 Audio tracks being kept"
+                        #ffmpeg command here?
+                    }
+                    elseif ($trackindex -eq "5") {
+                        Write-Host "5 Audio tracks being kept"
+                        #ffmpeg command here?
+                    }
+                    elseif ($trackindex -eq "6") {
+                        Write-Host "6 Audio tracks being kept"
+                        #ffmpeg command here?
+                    }
+                    # After FFMpeg completes, add movie path into completed list
+                    $CompletedMovieList += $MovieMetadata
                 }
             }
 
-
+            # Since on multiple runs this file will get wiped out, we should find a way to track the amount of times the script has been run
+            # While keeping in tact the movies that have been completed already
+            # Maybe a -firstrun parameter or something would help? Need to whiteboard this out.
+            $CompletedMovieList.FullName | Out-File -FilePath "$rootdirectory\ffmpegOut\completed_file_list.txt" 
         
+            # Empty List Variables
+            $CompletedMovieList = 
     }
     Catch{
         Write-HostFailed
